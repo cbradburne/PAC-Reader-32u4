@@ -13,117 +13,80 @@
   
 */
 
-#include <YetAnotherPcInt.h>
+#include <SoftwareSerial.h>
 #include <Keyboard.h>
 #include <elapsedMillis.h>
 
-elapsedMillis LED1millis;
+SoftwareSerial mySerial(8, 11);
+elapsedMillis timeElapsed;
 
-unsigned int LED1_Interval = 2000;
-unsigned volatile long reader1 = 0;
-unsigned volatile long reader2 = 0;
-unsigned volatile long reader3 = 0;
-unsigned volatile long reader4 = 0;
-volatile int reader1Count = 0;
-const int LEDpin = 7;
+int LEDpin = 7;
+unsigned int interval = 2000;
+boolean delayTest = false;
+byte variable[1000];
+byte index = 0;
+String fullCode = "";
 
-void reader1One(bool pinstate) {
-  if (pinstate == LOW && reader1Count <= 32) {
-    reader1Count++;
-    reader1 = reader1 << 1;
-    reader1 |= 1;
-  }
-  else if (pinstate == HIGH && reader1Count <= 32) {
-    reader1Count++;
-    reader1 = reader1 << 1;
-  }
-  else if (pinstate == LOW && reader1Count > 32 && reader1Count <= 64) { // && reader1Count <= 64
-    reader1Count++;
-    reader2 = reader2 << 1;
-    reader2 |= 1;
-  }
-  else if (pinstate == HIGH && reader1Count > 32 && reader1Count <= 64) { // && reader1Count <= 64
-    reader1Count++;
-    reader2 = reader2 << 1;
-  }
-  else if (pinstate == LOW && reader1Count > 64 && reader1Count <= 96) { // && reader1Count <= 64
-    reader1Count++;
-    reader3 = reader3 << 1;
-    reader3 |= 1;
-  }
-  else if (pinstate == HIGH && reader1Count > 64 && reader1Count <= 96) { // && reader1Count <= 64
-    reader1Count++;
-    reader3 = reader3 << 1;
-  }
-  else if (pinstate == LOW && reader1Count > 96 && reader1Count <= 128) { // && reader1Count <= 64
-    reader1Count++;
-    reader4 = reader4 << 1;
-    reader4 |= 1;
-  }
-  else if (pinstate == HIGH && reader1Count > 96 && reader1Count <= 128) { // && reader1Count <= 64
-    reader1Count++;
-    reader4 = reader4 << 1;
-  }
-  else if (pinstate == LOW && reader1Count > 128) {
-    reader1Count++;
-  }
-  else if (pinstate == HIGH && reader1Count > 128) {
-    reader1Count++;
-  }
-}
-
-void setup() {
-  Serial.begin(115200);
+void setup()
+{
+  //Serial.begin(57600);
   Keyboard.begin();
+  while (!Serial) {
+    ;
+  }
+  mySerial.begin(9600);//9600
   pinMode(LEDpin, OUTPUT);
-  pinMode(8, INPUT_PULLUP);
-  PcInt::attachInterrupt(8, reader1One, CHANGE);
-  reader1 = 0;
-  reader2 = 0;
-  reader3 = 0;
-  reader4 = 0;
-  reader1Count = 0;
   digitalWrite(LEDpin, HIGH);
 }
 
-void loop() {
-  /*
-  if (reader1Count == 1) {
-    //digitalWrite(7, LOW);
-    LED1millis = 0;
+void loop()
+{
+  if (mySerial.available()) {
+    byte b = mySerial.read();
+    variable[index++] = b;
+    if (index == 17 && !delayTest) { //
+      delayTest = true;
+      digitalWrite(LEDpin, LOW);
+      showResults();
+      timeElapsed = 0;
+    }
   }
-  else if (reader1Count == 1242){
-    Serial.println(reader1 /2);
-    Serial.println(reader2);
-    reader1 = 0;
-    reader2 = 0;
-    reader1Count = 0;
-  }
-
-  if (LED1millis >= LED1_Interval){
-    digitalWrite(7, HIGH);
-  }
-
-  */
-    
-  if (reader1Count == 1) {
-    digitalWrite(LEDpin, LOW);
-    LED1millis = 0;
-  }
-  else if (reader1Count == 1242){
-    Serial.println(reader1);
-    Serial.println(reader2);
-    Serial.println(reader3);
-    Serial.println(reader4);
-    Keyboard.println(reader1);
-    reader1 = 0;
-    reader2 = 0;
-    reader3 = 0;
-    reader4 = 0;
-    reader1Count = 0;
-  }
-
-  if (LED1millis >= LED1_Interval){
+  if (timeElapsed > interval) {
     digitalWrite(LEDpin, HIGH);
+    delayTest = false;
+    index = 0;
+    timeElapsed = 0;
   }
+}
+
+void showResults() {
+  /*
+  Serial.print(variable[0], HEX);
+  Serial.print(variable[1], HEX);
+  Serial.print(variable[2], HEX);
+  Serial.print(variable[3], HEX);
+  Serial.print(variable[4], HEX);
+  Serial.print(variable[5], HEX);
+  Serial.print(variable[6], HEX);
+  Serial.print(variable[7], HEX);
+  Serial.print(variable[8], HEX);
+  Serial.print(variable[9], HEX);
+  Serial.print(variable[10], HEX);
+  Serial.print(variable[11], HEX);
+  Serial.print(variable[12], HEX);
+  Serial.print(variable[13], HEX);
+  Serial.print(variable[14], HEX);
+  Serial.print(variable[15], HEX);
+  Serial.println(variable[16], HEX);
+*/
+  for (uint8_t i = 0; i < 17; i++) {
+    if (variable[i] < 16) fullCode += "0";
+    fullCode += String(variable[i], HEX);
+    fullCode.toUpperCase();
+  }
+
+  //Serial.println(fullCode);
+  //Serial.println("");
+  Keyboard.println(fullCode);
+  fullCode = "";
 }
